@@ -1,154 +1,99 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Singer 3337 Sewing Masterclass</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-</head>
-<body>
 
-  <div id="loading-screen">
-    <div class="loading-inner">
-      <div class="loading-logo">
-        <span class="load-brand">SINGER</span>
-        <span class="load-model">3337</span>
-      </div>
-      <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
-      <div class="loading-msg" id="loading-msg">Preparing your studio…</div>
-    </div>
-  </div>
+export class Scene3D {
+  constructor(canvasId){
+    const canvas = document.getElementById(canvasId);
 
-  <div id="app" class="app hidden">
-    <header class="app-header">
-      <div class="header-brand">
-        <span class="brand-singer">SINGER</span>
-        <span class="brand-model">3337</span>
-        <span class="brand-sub">Sewing Masterclass</span>
-      </div>
-      <div class="header-center">
-        <span class="breadcrumb-phase">Phase 1</span>
-        <span class="breadcrumb-sep">›</span>
-        <span class="breadcrumb-title" id="breadcrumb-title">Meet Your Machine</span>
-      </div>
-      <div class="header-right">
-        <div class="progress-pill">
-          <div class="progress-fill" id="header-progress" style="width:0%"></div>
-          <span class="progress-label" id="header-progress-label">0 / 12</span>
-        </div>
-      </div>
-    </header>
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x16151a);
 
-    <main class="app-main">
+    this.camera = new THREE.PerspectiveCamera(
+      45,
+      canvas.clientWidth / canvas.clientHeight,
+      0.1,
+      1000
+    );
 
-      <aside class="panel panel-left" id="instructor-panel">
-        <div class="instructor-card">
-          <div class="instructor-avatar">
-            <div class="avatar-circle">
-              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="40" cy="40" r="40" fill="#2e2418"/>
-                <circle cx="40" cy="30" r="14" fill="#c9a87c"/>
-                <ellipse cx="40" cy="64" rx="22" ry="18" fill="#3d2b1f"/>
-                <ellipse cx="40" cy="58" rx="16" ry="12" fill="#c9a87c"/>
-                <ellipse cx="40" cy="19" rx="15" ry="11" fill="#5a3a20"/>
-                <ellipse cx="27" cy="26" rx="6" ry="10" fill="#5a3a20"/>
-                <ellipse cx="53" cy="26" rx="6" ry="10" fill="#5a3a20"/>
-                <circle cx="35" cy="31" r="2" fill="#3d2418"/>
-                <circle cx="45" cy="31" r="2" fill="#3d2418"/>
-                <path d="M36 37 Q40 40 44 37" stroke="#3d2418" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <div class="instructor-name-block">
-              <span class="instructor-name">Eleanor</span>
-              <span class="instructor-title">Master Seamstress · 3 Generations</span>
-            </div>
-          </div>
-          <div class="instructor-dialogue">
-            <p id="dialogue-text">Welcome, dear. Pull up a chair. This Singer 3337 is going to become your best friend in the sewing room. Let me introduce you to every part of her — we'll take it one piece at a time.</p>
-          </div>
-          <div class="dialogue-tip">
-            <span class="tip-icon">✦</span>
-            <span id="tip-text">Click any part of the machine to hear what I have to say about it.</span>
-          </div>
-        </div>
+    this.camera.position.set(0, 2, 6);
 
-        <div class="lesson-list-header">
-          <span class="mono-label">LESSONS — PHASE 1</span>
-        </div>
-        <div class="lesson-list" id="lesson-list"></div>
-      </aside>
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias:true
+    });
 
-      <div class="canvas-wrap" id="canvas-wrap">
-        <canvas id="machine-canvas"></canvas>
-        <div class="part-tooltip hidden" id="part-tooltip"><span id="tooltip-text"></span></div>
-        <div class="view-controls">
-          <button class="view-btn" id="btn-reset-view" title="Reset View">↺</button>
-          <button class="view-btn" id="btn-view-front" title="Front">F</button>
-          <button class="view-btn" id="btn-view-side" title="Side">S</button>
-          <button class="view-btn" id="btn-view-top" title="Top">T</button>
-          <button class="view-btn view-btn-active" id="btn-view-3q" title="3/4 View">¾</button>
-        </div>
-        <div class="part-flash hidden" id="part-flash"></div>
-        <div class="canvas-hint" id="canvas-hint">Drag to orbit · Scroll to zoom · Click any part</div>
-      </div>
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
 
-      <aside class="panel panel-right" id="info-panel">
-        <div class="info-section">
-          <div class="info-section-title mono-label">SELECTED PART</div>
-          <div class="part-info-card">
-            <div class="part-info-name" id="part-info-name">Explore the machine</div>
-            <div class="part-info-desc" id="part-info-desc">Click any highlighted part of the 3D machine to learn about it. Drag to orbit, scroll to zoom.</div>
-          </div>
-        </div>
+    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
 
-        <div class="info-divider"></div>
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x222222, 1.4);
+    this.scene.add(hemi);
 
-        <div class="info-section">
-          <div class="info-section-title mono-label">MACHINE STATUS</div>
-          <div class="status-grid">
-            <div class="status-row"><span class="status-label">Power</span><span class="status-val status-off" id="st-power">OFF</span></div>
-            <div class="status-row"><span class="status-label">Upper Thread</span><span class="status-val status-warn" id="st-thread">Not threaded</span></div>
-            <div class="status-row"><span class="status-label">Bobbin</span><span class="status-val status-warn" id="st-bobbin">Empty</span></div>
-            <div class="status-row"><span class="status-label">Stitch</span><span class="status-val" id="st-stitch">Straight / 2.5mm</span></div>
-            <div class="status-row"><span class="status-label">Tension</span><span class="status-val status-ok" id="st-tension">3 — Normal</span></div>
-            <div class="status-row"><span class="status-label">Presser Foot</span><span class="status-val" id="st-foot">Raised</span></div>
-          </div>
-        </div>
+    const dir = new THREE.DirectionalLight(0xffffff, 1.1);
+    dir.position.set(4,5,3);
+    this.scene.add(dir);
 
-        <div class="info-divider"></div>
+    this.buildMachine();
 
-        <div class="info-section">
-          <div class="info-section-title mono-label">TRY IT</div>
-          <div class="tryit-block">
-            <button class="action-btn action-btn-secondary" id="btn-wheel-turn">↺ Turn Handwheel</button>
-            <p class="tryit-hint">Turns toward you — lowers the needle one stroke. This is how you always start.</p>
-          </div>
-        </div>
+    window.addEventListener('resize', () => this.resize());
+    this.animate();
+  }
 
-        <div class="info-divider"></div>
+  buildMachine(){
+    const bodyMat = new THREE.MeshStandardMaterial({color:0xf2ede3});
+    const aquaMat = new THREE.MeshStandardMaterial({color:0x4ecdc4});
 
-        <div class="info-section">
-          <div class="info-section-title mono-label">NEXT STEP</div>
-          <div class="next-action-card">
-            <p id="next-action-text">Choose a lesson from the left panel, or explore the machine freely first.</p>
-            <button class="action-btn action-btn-primary" id="btn-next-lesson">Begin Lesson 1 →</button>
-          </div>
-        </div>
-      </aside>
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(3.6,1.6,1.4),
+      bodyMat
+    );
+    body.position.y = 1;
+    this.scene.add(body);
 
-    </main>
+    const arm = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2,0.5,1.2),
+      bodyMat
+    );
+    arm.position.set(0.6,2,0);
+    this.scene.add(arm);
 
-    <footer class="app-footer">
-      <span class="mono-label footer-brand">SINGER 3337 MASTERCLASS</span>
-      <span class="footer-hint" id="footer-hint">Drag to orbit · Scroll to zoom · Click any part to learn</span>
-      <span class="mono-label footer-phase">PHASE 1 OF 5</span>
-    </footer>
-  </div>
+    const accent = new THREE.Mesh(
+      new THREE.BoxGeometry(1.1,0.35,1.41),
+      aquaMat
+    );
+    accent.position.set(-0.8,1.1,0);
+    this.scene.add(accent);
 
-  <script type="module" src="js/app.js"></script>
-</body>
-</html>
+    const wheel = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42,0.09,16,100),
+      new THREE.MeshStandardMaterial({color:0xc8cdd4})
+    );
+    wheel.rotation.y = Math.PI / 2;
+    wheel.position.set(2,1.3,0);
+    this.scene.add(wheel);
+
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(5,0.35,2.2),
+      new THREE.MeshStandardMaterial({color:0x2a2420})
+    );
+    base.position.y = 0;
+    this.scene.add(base);
+  }
+
+  resize(){
+    const canvas = this.renderer.domElement;
+    this.camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  }
+
+  animate(){
+    requestAnimationFrame(() => this.animate());
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  resetView(){
+    this.camera.position.set(0,2,6);
+  }
+}
