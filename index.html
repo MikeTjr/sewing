@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Singer 3337 — Sewing Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f5f0e8;
+    --warm-white: #faf8f4;
+    --ink: #1a1410;
+    --bark: #3d2b1f;
+    --rust: #b84a1e;
+    --sage: #4a7c59;
+    --sky: #3a7dbd;
+    --gold: #c9963d;
+    --panel: #f0ebe0;
+    --border: #d4c9b5;
+    --needle-silver: #c8cdd4;
+    --machine-cream: #f2ede3;
+    --machine-shadow: #c9bfaa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow-x: hidden;
+  }
+
+  header {
+    background: var(--bark);
+    color: var(--cream);
+    padding: 18px 36px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    border-bottom: 3px solid var(--rust);
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.02em;
+  }
+
+  header .subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: #c9bfaa;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 320px 1fr 280px;
+    height: calc(100vh - 61px);
+    overflow: hidden;
+  }
+
+  /* ─── LEFT PANEL: Lessons ─────────────────────────── */
+  .lessons-panel {
+    background: var(--warm-white);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--rust);
+    padding: 16px 20px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  .lesson-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .lesson-item:hover { background: #ede8dd; }
+  .lesson-item.active { background: #e8dfd0; border-left: 3px solid var(--rust); padding-left: 17px; }
+
+  .lesson-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--rust);
+    min-width: 24px;
+    padding-top: 2px;
+  }
+
+  .lesson-info h3 {
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  .lesson-info p {
+    font-size: 0.75rem;
+    color: #6b5c4c;
+    line-height: 1.4;
+  }
+
+  .lesson-done {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--sage);
+    margin-left: auto;
+    margin-top: 3px;
+    flex-shrink: 0;
+    display: none;
+  }
+
+  .lesson-item.done .lesson-done { display: block; }
+
+  /* ─── CENTER: Machine ─────────────────────────────── */
+  .machine-view {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--cream);
+    position: relative;
+  }
+
+  .lesson-banner {
+    background: var(--bark);
+    color: var(--cream);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .lesson-banner h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+  }
+
+  .lesson-banner .step-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    background: var(--rust);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+
+  .machine-canvas-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* ─── SVG Machine ──────────────────────────────────── */
+  #machine-svg {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+  }
+
+  /* highlight glow on hover parts */
+  .machine-part {
+    cursor: pointer;
+    transition: filter 0.2s;
+  }
+  .machine-part:hover { filter: brightness(1.08) drop-shadow(0 0 6px rgba(185,74,30,0.5)); }
+  .machine-part.highlighted {
+    filter: brightness(1.1) drop-shadow(0 0 10px rgba(185,74,30,0.8));
+    animation: pulse-part 1.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-part {
+    from { filter: brightness(1.05) drop-shadow(0 0 6px rgba(185,74,30,0.5)); }
+    to   { filter: brightness(1.15) drop-shadow(0 0 14px rgba(185,74,30,1)); }
+  }
+
+  .label-line { pointer-events: none; }
+  .part-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    fill: var(--ink);
+    pointer-events: none;
+  }
+  .part-label-bg { fill: var(--cream); pointer-events: none; }
+
+  /* ─── Needle animation ─────────────────────────────── */
+  #needle-group {
+    transform-origin: 50% 0%;
+  }
+  #needle-group.sewing {
+    animation: needle-stroke 0.4s linear infinite;
+  }
+  @keyframes needle-stroke {
+    0%   { transform: translateY(0px); }
+    40%  { transform: translateY(28px); }
+    55%  { transform: translateY(30px); }
+    100% { transform: translateY(0px); }
+  }
+
+  #handwheel-group.spinning {
+    animation: spin-wheel 0.8s linear infinite;
+    transform-origin: 742px 196px;
+  }
+  @keyframes spin-wheel {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  #thread-path {
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    transition: stroke-dashoffset 2s ease;
+  }
+  #thread-path.threaded { stroke-dashoffset: 0; }
+
+  /* fabric feed animation */
+  #fabric-group.feeding {
+    animation: feed-fabric 0.8s linear infinite;
+  }
+  @keyframes feed-fabric {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-8px); }
+  }
+
+  /* ─── Instruction box ──────────────────────────────── */
+  .instruction-box {
+    background: var(--warm-white);
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    flex-shrink: 0;
+  }
+
+  .instruction-box p {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--bark);
+  }
+
+  .instruction-box .tip {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--sage);
+    font-style: italic;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 9px 18px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--rust);
+    color: white;
+  }
+  .btn-primary:hover { background: #9e3d15; }
+
+  .btn-secondary {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: #e0d8cc; }
+
+  .btn-sage {
+    background: var(--sage);
+    color: white;
+  }
+  .btn-sage:hover { background: #3a6347; }
+
+  /* ─── RIGHT PANEL: Info ───────────────────────────── */
+  .info-panel {
+    background: var(--warm-white);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-section {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .info-section h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 10px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    font-size: 0.82rem;
+    border-bottom: 1px dotted var(--border);
+  }
+
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: #6b5c4c; }
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .stat-value.good { color: var(--sage); }
+  .stat-value.warn { color: var(--gold); }
+  .stat-value.bad  { color: var(--rust); }
+
+  .part-detail {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--bark);
+  }
+
+  .part-detail strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--ink);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .quiz-area { padding: 16px 18px; }
+
+  .quiz-area h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin-bottom: 10px;
+  }
+
+  .quiz-q {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .quiz-options { display: flex; flex-direction: column; gap: 6px; }
+
+  .quiz-opt {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    font-family: 'Outfit', sans-serif;
+    color: var(--ink);
+  }
+
+  .quiz-opt:hover { background: #e0d8cc; border-color: #b5a990; }
+  .quiz-opt.correct { background: #d4edda; border-color: var(--sage); color: var(--sage); font-weight: 600; }
+  .quiz-opt.wrong   { background: #f8d7da; border-color: var(--rust); color: var(--rust); }
+
+  .quiz-feedback {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    padding: 8px 10px;
+    border-radius: 4px;
+    display: none;
+    line-height: 1.4;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: #d4edda; color: #1a5c2e; }
+  .quiz-feedback.no { background: #f8d7da; color: #7a1a1a; }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px 0;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--sage);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* speedometer */
+  .speed-knob {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 0 6px;
+  }
+
+  .speed-knob label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rust);
+  }
+
+  .speed-knob input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--sage), var(--gold), var(--rust));
+    outline: none;
+    cursor: pointer;
+  }
+
+  .speed-knob input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--warm-white);
+    border: 2px solid var(--bark);
+    cursor: grab;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+
+  .rpm-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .rpm-unit {
+    font-size: 0.65rem;
+    color: #888;
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Singer 3337 Simulator</h1>
+  <span class="subtitle">Interactive Sewing Tutorial</span>
+  <div style="margin-left:auto; font-family:'DM Mono',monospace; font-size:0.72rem; color:#c9bfaa;">
+    Progress: <span id="progress-pct">0%</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ═══ LEFT: LESSONS ═══════════════════════════════════════ -->
+  <div class="lessons-panel">
+    <div class="panel-title">Lessons</div>
+
+    <div class="lesson-item active" data-lesson="0" onclick="setLesson(0)">
+      <span class="lesson-num">01</span>
+      <div class="lesson-info">
+        <h3>Parts of the Machine</h3>
+        <p>Learn where everything is and what it does</p>
+      </div>
+      <div class="lesson-done"></div>
+    </div>
+
+    <div class="lesson-item" data-lesson="1" onclick="setLesson(1)">
+      <span class="lesson-num">02</span>
+      <div class="lesson-info">
+        <h3>Threading the Machine</h3>
+        <p>Upper thread path from spool to needle</p>
+      </div>
+      <div class="lesson-done"></div>
+    </div>
+
+    <div class="lesson-item" data-lesson="2" onclick="setLesson(2)">
+      <span class="lesson-num">03</span>
+      <div class="lesson-info">
+        <h3>Winding the Bobbin</h3>
+        <p>Preparing your lower thread supply</p>
+      </div>
+      <div class="lesson-done"></div>
+    </div>
+
+    <div class="lesson-item" data-lesson="3" onclick="setLesson(3)">
+      <span class="lesson-num">04</span>
+      <div class="lesson-info">
+        <h3>Stitch Length &amp; Width</h3>
+        <p>Dial settings for different fabrics</p>
+      </div>
+      <div class="lesson-done"></div>
+    </div>
+
+    <div class="lesson-item" data-lesson="4" onclick="setLesson(4)">
+      <span class="lesson-num">05</span>
+      <div class="lesson-info">
+        <h3>Sewing in Action</h3>
+        <p>Foot pedal, speed, and keeping straight</p>
+      </div>
+      <div class="lesson-done"></div>
+    </div>
+
+    <div class="lesson-item" data-lesson="5" onclick="setLesson(5)">
+      <span class="lesson-num">06</span>
+      <div class="lesson-info">
+        <h3>Troubleshooting</h3>
+        <p>Thread breaks, skipped stitches, tension</p>
+      </div>
+      <div class="lesson-done"></div>
+    </div>
+
+    <div style="padding:18px 20px; margin-top:auto; border-top:1px solid var(--border);">
+      <div style="font-size:0.78rem; color:#6b5c4c; margin-bottom:8px;">Overall Progress</div>
+      <div class="progress-bar" style="height:8px;">
+        <div class="progress-fill" id="overall-progress" style="width:0%"></div>
+      </div>
+      <div style="font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--rust); margin-top:6px;">
+        <span id="lessons-done">0</span> of 6 lessons complete
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CENTER: MACHINE VIEW ════════════════════════════════ -->
+  <div class="machine-view">
+    <div class="lesson-banner">
+      <span class="step-badge" id="lesson-badge">LESSON 1</span>
+      <h2 id="lesson-title">Parts of the Machine</h2>
+    </div>
+
+    <div class="machine-canvas-wrap">
+      <!-- ─── THE MACHINE SVG ─────────────────────────────────── -->
+      <svg id="machine-svg" viewBox="0 80 820 480" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f7f3eb"/>
+            <stop offset="100%" style="stop-color:#e8e0d0"/>
+          </linearGradient>
+          <linearGradient id="armGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#eeead8"/>
+            <stop offset="100%" style="stop-color:#d8d0bc"/>
+          </linearGradient>
+          <linearGradient id="bedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#e8e2d4"/>
+            <stop offset="100%" style="stop-color:#c9bfaa"/>
+          </linearGradient>
+          <linearGradient id="wheelGrad" cx="50%" cy="50%" r="50%" fx="40%" fy="35%" gradientUnits="objectBoundingBox" id="wheelGrad2">
+            <stop offset="0%" style="stop-color:#555"/>
+            <stop offset="100%" style="stop-color:#1a1a1a"/>
+          </linearGradient>
+          <filter id="shadow" x="-5%" y="-5%" width="115%" height="125%">
+            <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.18"/>
+          </filter>
+        </defs>
+
+        <!-- ── BASE / TABLE ── -->
+        <rect x="50" y="490" width="720" height="30" rx="4" fill="#b5a890"/>
+        <rect x="70" y="485" width="680" height="10" rx="3" fill="#c9bfaa"/>
+
+        <!-- ── BED (flat bottom of machine) ── -->
+        <g class="machine-part" id="part-bed" onclick="selectPart('bed')" title="Bed">
+          <rect x="80" y="400" width="660" height="88" rx="10" fill="url(#bedGrad)" filter="url(#shadow)"/>
+          <rect x="80" y="400" width="660" height="8" rx="5" fill="#d0c8b4"/>
+          <!-- feed dogs cutout -->
+          <rect x="320" y="440" width="80" height="18" rx="3" fill="#b8b0a0"/>
+          <rect x="325" y="443" width="70" height="4" rx="1" fill="#8a8070"/>
+          <rect x="325" y="450" width="70" height="4" rx="1" fill="#8a8070"/>
+          <!-- needle plate -->
+          <rect x="290" y="435" width="140" height="30" rx="4" fill="#ccc8be"/>
+          <ellipse cx="360" cy="450" rx="8" ry="3" fill="#888"/>
+        </g>
+
+        <!-- ── BODY / COLUMN ── -->
+        <g class="machine-part" id="part-body" onclick="selectPart('body')" title="Body">
+          <rect x="80" y="130" width="200" height="278" rx="12" fill="url(#bodyGrad)" filter="url(#shadow)"/>
+          <rect x="84" y="134" width="192" height="4" rx="2" fill="#f0ece0"/>
+        </g>
+
+        <!-- ── ARM (top horizontal) ── -->
+        <g class="machine-part" id="part-arm" onclick="selectPart('arm')" title="Arm">
+          <rect x="80" y="110" width="660" height="65" rx="10" fill="url(#armGrad)" filter="url(#shadow)"/>
+          <rect x="84" y="114" width="652" height="5" rx="3" fill="#f5f2e8"/>
+        </g>
+
+        <!-- ── SPOOL PIN ── -->
+        <g class="machine-part" id="part-spool" onclick="selectPart('spool')" title="Spool Pin">
+          <rect x="600" y="82" width="8" height="32" rx="3" fill="#888"/>
+          <!-- spool of thread -->
+          <ellipse cx="604" cy="88" rx="18" ry="8" fill="#e07040"/>
+          <rect x="587" y="88" width="34" height="18" rx="2" fill="#e07040"/>
+          <ellipse cx="604" cy="106" rx="18" ry="8" fill="#c05030"/>
+          <ellipse cx="604" cy="97" rx="14" ry="6" fill="#d46840" opacity="0.5"/>
+        </g>
+
+        <!-- ── THREAD PATH (animated) ── -->
+        <path id="thread-path"
+          d="M604,106 L604,120 L560,120 L540,138 L540,160 L500,178 L500,200 L520,220 L520,260 L460,280 L460,300 L420,320 L360,340 L360,420"
+          fill="none" stroke="#e07040" stroke-width="2.5" stroke-linecap="round"
+          stroke-dasharray="600" stroke-dashoffset="600"
+          opacity="0.85"
+        />
+
+        <!-- ── TENSION DISCS ── -->
+        <g class="machine-part" id="part-tension" onclick="selectPart('tension')" title="Thread Tension">
+          <circle cx="500" cy="200" r="14" fill="#c9bfaa" stroke="#999" stroke-width="1.5"/>
+          <circle cx="500" cy="200" r="8" fill="#888"/>
+          <text x="500" y="205" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="white">3</text>
+        </g>
+
+        <!-- ── TAKE-UP LEVER ── -->
+        <g class="machine-part" id="part-lever" onclick="selectPart('lever')" title="Take-Up Lever" id="takeup-lever">
+          <rect x="492" y="245" width="36" height="9" rx="4" fill="#b0a898" stroke="#888" stroke-width="1"/>
+          <circle cx="520" cy="249" r="5" fill="#888"/>
+        </g>
+
+        <!-- ── PRESSER FOOT BAR ── -->
+        <g class="machine-part" id="part-presser-bar" onclick="selectPart('presser-bar')" title="Presser Foot">
+          <rect x="352" y="340" width="16" height="60" rx="3" fill="#aaa" stroke="#888" stroke-width="1"/>
+          <!-- presser foot -->
+          <rect x="340" y="395" width="40" height="10" rx="3" fill="#bbb" stroke="#999" stroke-width="1"/>
+          <rect x="346" y="405" width="8" height="20" rx="2" fill="#aaa"/>
+          <rect x="366" y="405" width="8" height="20" rx="2" fill="#aaa"/>
+        </g>
+
+        <!-- ── NEEDLE GROUP (animated) ── -->
+        <g id="needle-group">
+          <rect x="357" y="380" width="5" height="55" rx="1" fill="#c8cdd4" stroke="#9aa" stroke-width="0.5"/>
+          <!-- needle eye -->
+          <ellipse cx="359" cy="432" rx="2.5" ry="1" fill="none" stroke="#888" stroke-width="1"/>
+          <!-- thread through needle -->
+          <line x1="359" y1="433" x2="359" y2="455" stroke="#e07040" stroke-width="1.5" id="needle-thread" opacity="0"/>
+        </g>
+
+        <!-- ── HANDWHEEL ── -->
+        <g id="handwheel-group" class="machine-part" onclick="selectPart('handwheel')" title="Handwheel">
+          <circle cx="742" cy="196" r="38" fill="#222" stroke="#111" stroke-width="2" filter="url(#shadow)"/>
+          <circle cx="742" cy="196" r="30" fill="#2a2a2a"/>
+          <circle cx="742" cy="196" r="18" fill="#333"/>
+          <circle cx="742" cy="196" r="6" fill="#555"/>
+          <!-- spokes -->
+          <line x1="742" y1="162" x2="742" y2="178" stroke="#444" stroke-width="4" stroke-linecap="round"/>
+          <line x1="742" y1="214" x2="742" y2="230" stroke="#444" stroke-width="4" stroke-linecap="round"/>
+          <line x1="708" y1="196" x2="724" y2="196" stroke="#444" stroke-width="4" stroke-linecap="round"/>
+          <line x1="760" y1="196" x2="776" y2="196" stroke="#444" stroke-width="4" stroke-linecap="round"/>
+          <!-- grip dot -->
+          <circle cx="742" cy="162" r="5" fill="#666"/>
+        </g>
+
+        <!-- ── STITCH SELECTOR ── -->
+        <g class="machine-part" id="part-stitch" onclick="selectPart('stitch')" title="Stitch Selector">
+          <rect x="130" y="180" width="90" height="120" rx="8" fill="#ddd8cc" stroke="#bbb" stroke-width="1"/>
+          <text x="175" y="200" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#555">STITCH</text>
+          <circle cx="175" cy="240" r="30" fill="#c9bfaa" stroke="#aaa" stroke-width="1.5"/>
+          <circle cx="175" cy="240" r="20" fill="#b8b0a2"/>
+          <line x1="175" y1="220" x2="175" y2="225" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- indicator -->
+          <line x1="175" y1="240" x2="175" y2="228" stroke="var(--rust)" stroke-width="2" id="stitch-needle" stroke-linecap="round"/>
+        </g>
+
+        <!-- ── BOBBIN COVER ── -->
+        <g class="machine-part" id="part-bobbin" onclick="selectPart('bobbin')" title="Bobbin">
+          <rect x="310" y="452" width="100" height="22" rx="8" fill="#c8c0b0" stroke="#aaa" stroke-width="1"/>
+          <ellipse cx="360" cy="463" rx="20" ry="9" fill="#b8b090" stroke="#999" stroke-width="1"/>
+          <ellipse cx="360" cy="463" rx="8" ry="5" fill="#c8c0b0"/>
+        </g>
+
+        <!-- ── FEED DOGS ── -->
+        <g id="fabric-group">
+          <!-- fabric -->
+          <rect x="220" y="436" width="300" height="18" rx="2" fill="#7ec8e3" opacity="0.85" id="fabric-rect"/>
+          <rect x="220" y="436" width="300" height="3" rx="1" fill="#5ab8d8" opacity="0.6"/>
+          <!-- stitch line on fabric -->
+          <line x1="360" y1="438" x2="220" y2="438" stroke="white" stroke-width="1" stroke-dasharray="4,3" opacity="0.7" id="stitch-line"/>
+        </g>
+
+        <!-- ── BOBBIN WINDER ── -->
+        <g class="machine-part" id="part-winder" onclick="selectPart('winder')" title="Bobbin Winder">
+          <rect x="660" y="82" width="8" height="32" rx="3" fill="#888"/>
+          <circle cx="664" cy="106" r="14" fill="#c9bfaa" stroke="#aaa" stroke-width="1.5"/>
+          <circle cx="664" cy="106" r="5" fill="#888"/>
+        </g>
+
+        <!-- ── PRESSER FOOT LEVER ── -->
+        <g class="machine-part" id="part-pf-lever" onclick="selectPart('pf-lever')" title="Presser Foot Lever">
+          <rect x="178" y="338" width="70" height="10" rx="4" fill="#c9bfaa" stroke="#aaa" stroke-width="1"/>
+          <circle cx="248" cy="343" r="6" fill="#888"/>
+        </g>
+
+        <!-- ─── LABELS (shown in parts lesson) ─── -->
+        <g id="labels-group" opacity="0">
+          <!-- spool -->
+          <line x1="604" y1="97" x2="604" y2="82" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="618" y="75" width="80" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="622" y="86" class="part-label" fill="#b84a1e">Spool Pin</text>
+
+          <!-- handwheel -->
+          <line x1="742" y1="158" x2="742" y2="140" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="700" y="130" width="84" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="704" y="141" class="part-label" fill="#b84a1e">Handwheel</text>
+
+          <!-- tension -->
+          <line x1="514" y1="200" x2="560" y2="200" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="562" y="193" width="96" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="566" y="204" class="part-label" fill="#b84a1e">Tension Dial</text>
+
+          <!-- take-up lever -->
+          <line x1="528" y1="249" x2="570" y2="249" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="572" y="242" width="100" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="576" y="253" class="part-label" fill="#b84a1e">Take-Up Lever</text>
+
+          <!-- presser foot -->
+          <line x1="340" y1="415" x2="290" y2="415" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="194" y="408" width="96" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="198" y="419" class="part-label" fill="#b84a1e">Presser Foot</text>
+
+          <!-- needle -->
+          <line x1="355" y1="410" x2="310" y2="390" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="214" y="383" width="96" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="218" y="394" class="part-label" fill="#b84a1e">Needle</text>
+
+          <!-- bobbin -->
+          <line x1="360" y1="475" x2="360" y2="492" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="316" y="493" width="88" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="320" y="504" class="part-label" fill="#b84a1e">Bobbin Area</text>
+
+          <!-- feed dogs -->
+          <line x1="360" y1="440" x2="450" y2="425" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="452" y="418" width="76" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="456" y="429" class="part-label" fill="#b84a1e">Feed Dogs</text>
+
+          <!-- stitch selector -->
+          <line x1="130" y1="240" x2="100" y2="240" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="54" y="233" width="46" height="28" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="58" y="244" class="part-label" fill="#b84a1e">Stitch</text>
+          <text x="58" y="255" class="part-label" fill="#b84a1e">Selector</text>
+
+          <!-- bobbin winder -->
+          <line x1="664" y1="92" x2="664" y2="82" class="label-line" stroke="#b84a1e" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="560" y="74" width="98" height="16" rx="3" class="part-label-bg" opacity="0.9"/>
+          <text x="564" y="85" class="part-label" fill="#b84a1e">Bobbin Winder</text>
+        </g>
+
+      </svg>
+    </div>
+
+    <div class="instruction-box">
+      <p id="instruction-text">Click any part of the machine to learn what it does. Look for the highlighted parts as you work through each lesson.</p>
+      <p class="tip" id="tip-text">💡 Tip: Use the Handwheel to lower the needle by hand before starting — always turn it toward you.</p>
+      <div class="btn-row" id="action-buttons">
+        <button class="btn btn-primary" onclick="showLabels()">Show All Labels</button>
+        <button class="btn btn-secondary" onclick="nextLesson()">Next Lesson →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT: INFO PANEL ════════════════════════════════════ -->
+  <div class="info-panel">
+
+    <div class="info-section">
+      <h4>Machine Status</h4>
+      <div class="stat-row">
+        <span class="stat-label">Power</span>
+        <span class="stat-value" id="stat-power" style="color:var(--rust)">OFF</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Speed</span>
+        <span class="stat-value" id="stat-speed">0 SPM</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Thread</span>
+        <span class="stat-value warn" id="stat-thread">Not threaded</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Bobbin</span>
+        <span class="stat-value warn" id="stat-bobbin">Empty</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Stitch</span>
+        <span class="stat-value" id="stat-stitch">Straight / 2.5mm</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Tension</span>
+        <span class="stat-value good" id="stat-tension">3 (Normal)</span>
+      </div>
+    </div>
+
+    <div class="info-section speed-knob" id="speed-control" style="display:none">
+      <label>Foot Pedal Speed</label>
+      <div class="rpm-display"><span id="rpm-value">0</span> <span class="rpm-unit">SPM</span></div>
+      <input type="range" min="0" max="800" value="0" id="speed-slider" oninput="updateSpeed(this.value)">
+      <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#888;font-family:'DM Mono',monospace;width:100%;">
+        <span>slow</span><span>fast</span>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn btn-sage" style="font-size:0.75rem;padding:7px 12px" onclick="toggleSewing()">▶ Start</button>
+        <button class="btn btn-secondary" style="font-size:0.75rem;padding:7px 12px" onclick="reverseSew()">↩ Reverse</button>
+      </div>
+    </div>
+
+    <div class="info-section" id="part-info">
+      <h4>Selected Part</h4>
+      <div class="part-detail" id="part-detail-text">
+        <strong>Click a part to learn about it</strong>
+        Hover over any component on the machine diagram, then click to read a detailed explanation of its role in sewing.
+      </div>
+    </div>
+
+    <div class="quiz-area" id="quiz-container" style="display:none">
+      <h4>Quick Check</h4>
+      <div class="quiz-q" id="quiz-question"></div>
+      <div class="quiz-options" id="quiz-options"></div>
+      <div class="quiz-feedback" id="quiz-feedback"></div>
+      <button class="btn btn-secondary" style="margin-top:10px;font-size:0.78rem;padding:7px 14px;" onclick="nextQuiz()" id="next-quiz-btn" style="display:none">Next Question →</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+const PARTS = {
+  spool: {
+    name: "Spool Pin",
+    desc: "Holds the spool of upper thread. The thread unwinds from here and travels down through the machine to the needle. Make sure the spool is seated correctly — some machines need a horizontal pin, others vertical.",
+    tip: "If your thread keeps tangling, check the spool is spinning freely and not catching on the pin cap."
+  },
+  tension: {
+    name: "Thread Tension Dial",
+    desc: "Controls how tightly the upper thread is held as it feeds through. A setting of 3–5 is normal for most fabrics. Too tight = thread breaks or puckers the fabric. Too loose = loops appear on the underside.",
+    tip: "Test tension on a scrap of the same fabric before starting your project."
+  },
+  lever: {
+    name: "Take-Up Lever",
+    desc: "This hook-shaped lever moves up and down as the machine sews. It pulls up a small amount of thread with each stitch to keep tension consistent. It must always be in the UP position when you stop — otherwise the thread will pull out of the needle.",
+    tip: "Always stop with the take-up lever at its highest point before removing your fabric."
+  },
+  handwheel: {
+    name: "Handwheel",
+    desc: "The large wheel on the right side of the machine. Turning it toward you (counterclockwise from the front) manually lowers and raises the needle. Use it to precisely position the needle, or to take the first stitch safely before pressing the pedal.",
+    tip: "NEVER turn the handwheel away from you — it can tangle the thread under the plate."
+  },
+  presser_bar: {
+    name: "Presser Foot",
+    desc: "The metal foot that presses the fabric against the feed dogs. Different presser feet are used for different tasks: the standard foot for straight stitching, a zipper foot for zippers, a walking foot for quilting, etc.",
+    tip: "Always lower the presser foot before sewing — it also engages the upper thread tension."
+  },
+  "pf-lever": {
+    name: "Presser Foot Lever",
+    desc: "The small lever at the back of the machine that raises and lowers the presser foot. Raise it to insert or remove fabric, lower it before sewing. Some machines also have a extra-high position for thick fabrics.",
+    tip: "The tension discs only engage when the presser foot is lowered — so always lower before threading!"
+  },
+  bobbin: {
+    name: "Bobbin & Bobbin Case",
+    desc: "The bobbin is a small spool that sits below the needle plate and supplies the lower thread. It works together with the upper thread to form a lock stitch. The bobbin must be wound with thread and inserted in the correct orientation.",
+    tip: "If your stitches look loopy on the bottom, your bobbin thread may be incorrectly tensioned or inserted backwards."
+  },
+  bed: {
+    name: "Bed (Needle Plate Area)",
+    desc: "The flat work surface of the machine. It contains the needle plate (with the needle hole and seam guide markings) and the feed dogs (metal teeth that grip and advance your fabric with each stitch).",
+    tip: "The lines on the needle plate are seam allowance guides — align your fabric edge to sew a consistent 5/8\" or 1/4\" seam."
+  },
+  arm: {
+    name: "Arm",
+    desc: "The horizontal top section of the machine that houses the upper threading path, the take-up lever mechanism, and connects the handwheel to the needle bar. The thread travels along the arm as it goes from the spool to the needle.",
+    tip: "Keep the top of the arm clean and dust-free so the thread glides smoothly."
+  },
+  body: {
+    name: "Machine Body / Column",
+    desc: "The upright section of the machine that connects the arm to the bed. Inside it is the needle bar mechanism driven by the handwheel. The controls for stitch selection are usually on the front face.",
+    tip: "The body houses the motor on electric machines — keep vents clear for airflow."
+  },
+  stitch: {
+    name: "Stitch Selector",
+    desc: "A dial or digital control to choose between stitch types: straight stitch, zigzag, blind hem, buttonhole, and more. The Singer 3337 offers 34 built-in stitches. A straight stitch is used for seams; zigzag is used for finishing raw edges.",
+    tip: "Start with straight stitch (usually stitch #1) for basic seaming."
+  },
+  winder: {
+    name: "Bobbin Winder",
+    desc: "A small spindle on the top of the machine where you place an empty bobbin to wind thread onto it. Push the bobbin onto the winder pin, engage the stopper, hold the thread end, and press the pedal — it winds automatically and stops when full.",
+    tip: "Wind the bobbin before threading the upper part of the machine."
+  }
+};
+
+const LESSONS = [
+  {
+    title: "Parts of the Machine",
+    badge: "LESSON 1",
+    instruction: "Click any part of the machine to learn what it does. The Singer 3337 has <strong>34 built-in stitches</strong> and is designed for beginners and intermediate sewers alike.",
+    tip: "💡 Start by identifying the Handwheel on the right and the Needle at the bottom-left of the arm.",
+    actions: [
+      { label: "Show All Labels", fn: "showLabels()", cls: "btn-primary" },
+      { label: "Next Lesson →", fn: "nextLesson()", cls: "btn-secondary" }
+    ],
+    setup: () => { hideAnimations(); showLabelsGroup(false); showQuiz(false); showSpeed(false); }
+  },
+  {
+    title: "Threading the Machine",
+    badge: "LESSON 2",
+    instruction: "Threading goes in this order: <strong>Spool → Thread guides on arm → Tension discs → Take-up lever → Needle guides → Needle eye</strong>. Watch the orange thread path animate as you click the button.",
+    tip: "💡 Always thread with the presser foot UP and the needle in its highest position.",
+    actions: [
+      { label: "▶ Animate Thread Path", fn: "animateThread()", cls: "btn-primary" },
+      { label: "Reset Thread", fn: "resetThread()", cls: "btn-secondary" },
+      { label: "Next Lesson →", fn: "nextLesson()", cls: "btn-secondary" }
+    ],
+    setup: () => {
+      hideAnimations();
+      resetThread();
+      showLabelsGroup(false);
+      showQuiz(false);
+      showSpeed(false);
+      highlightPart('part-spool');
+    }
+  },
+  {
+    title: "Winding the Bobbin",
+    badge: "LESSON 3",
+    instruction: "Place an empty bobbin on the <strong>Bobbin Winder</strong> pin. Run thread from the spool through the small guide and wrap it a few times around the bobbin. Press the winder against its stopper and press the foot pedal — it stops when full.",
+    tip: "💡 Wind at medium speed for even winding. A badly wound bobbin causes tension problems.",
+    actions: [
+      { label: "▶ Simulate Bobbin Wind", fn: "windBobbin()", cls: "btn-primary" },
+      { label: "Next Lesson →", fn: "nextLesson()", cls: "btn-secondary" }
+    ],
+    setup: () => {
+      hideAnimations();
+      showLabelsGroup(false);
+      showQuiz(false);
+      showSpeed(false);
+      highlightPart('part-winder');
+      document.getElementById('stat-bobbin').textContent = 'Empty';
+      document.getElementById('stat-bobbin').className = 'stat-value warn';
+    }
+  },
+  {
+    title: "Stitch Length & Width",
+    badge: "LESSON 4",
+    instruction: "Stitch length controls how far the fabric advances per stitch. <strong>2–2.5mm</strong> is standard for woven fabrics. <strong>3–4mm</strong> for basting (temporary stitches). On stretch fabrics, use a zigzag or stretch stitch so seams don't break when the fabric moves.",
+    tip: "💡 Longer stitch = weaker seam but easier to remove. Shorter stitch = stronger but harder to unpick.",
+    actions: [
+      { label: "Test Straight Stitch", fn: "setStraight()", cls: "btn-primary" },
+      { label: "Test Zigzag", fn: "setZigzag()", cls: "btn-sage" },
+      { label: "Next Lesson →", fn: "nextLesson()", cls: "btn-secondary" }
+    ],
+    setup: () => {
+      hideAnimations();
+      showLabelsGroup(false);
+      showQuiz(false);
+      showSpeed(false);
+      highlightPart('part-stitch');
+    }
+  },
+  {
+    title: "Sewing in Action",
+    badge: "LESSON 5",
+    instruction: "Power on, lower the presser foot, position fabric under the needle, and use the <strong>foot pedal slider</strong> to start sewing. Guide — don't push — the fabric. At the end of a seam, <strong>backstitch</strong> 3–4 stitches to lock the thread.",
+    tip: "💡 Keep your eyes on the seam guide line on the needle plate, not the needle itself.",
+    actions: [
+      { label: "⚡ Power On", fn: "powerOn()", cls: "btn-primary" },
+      { label: "Next Lesson →", fn: "nextLesson()", cls: "btn-secondary" }
+    ],
+    setup: () => {
+      showLabelsGroup(false);
+      showQuiz(false);
+    }
+  },
+  {
+    title: "Troubleshooting",
+    badge: "LESSON 6",
+    instruction: "Most problems have simple causes. <strong>Thread breaking</strong>: check threading order and tension. <strong>Skipped stitches</strong>: needle may be dull, wrong size, or inserted backwards. <strong>Puckering</strong>: tension too tight or stitch length too short for the fabric.",
+    tip: "💡 When in doubt, rethread from scratch — it fixes 80% of issues.",
+    actions: [
+      { label: "✓ Complete Quiz", fn: "startQuiz()", cls: "btn-primary" },
+      { label: "← Restart", fn: "setLesson(0)", cls: "btn-secondary" }
+    ],
+    setup: () => {
+      hideAnimations();
+      stopSewing();
+      showLabelsGroup(false);
+      showSpeed(false);
+    }
+  }
+];
+
+const QUIZZES = [
+  {
+    q: "Which direction should you turn the handwheel?",
+    opts: ["Away from you", "Toward you", "Either direction is fine", "Only use the foot pedal"],
+    answer: 1,
+    feedback: "Always turn the handwheel toward you (counterclockwise). Turning it away can tangle thread under the needle plate."
+  },
+  {
+    q: "What does raising the presser foot lever do to thread tension?",
+    opts: ["Increases tension", "Has no effect on tension", "Releases the tension discs", "Engages the feed dogs"],
+    answer: 2,
+    feedback: "Raising the presser foot releases the tension discs — which is why you thread the machine with the foot UP."
+  },
+  {
+    q: "Your stitches look loopy on the bottom of the fabric. The most likely cause is:",
+    opts: ["Needle is too thick", "Upper thread tension is too high", "Bobbin thread has a problem", "Stitch length is too short"],
+    answer: 2,
+    feedback: "Loops on the underside usually mean the bobbin thread is incorrectly tensioned or the bobbin is inserted backwards."
+  },
+  {
+    q: "When should you backstitch?",
+    opts: ["Only at the start of a seam", "Only at the end of a seam", "At both the start and end of a seam", "Never — it weakens the seam"],
+    answer: 2,
+    feedback: "Backstitch 3–4 stitches at both the start AND end of every seam to lock the thread and prevent unraveling."
+  }
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentLesson = 0;
+let isSewing = false;
+let isPowered = false;
+let isThreaded = false;
+let isBobbinFull = false;
+let completedLessons = new Set();
+let currentSpeed = 0;
+let quizIndex = 0;
+let quizAnswered = false;
+
+// ─── LESSON SYSTEM ───────────────────────────────────────────────────────────
+
+function setLesson(idx) {
+  currentLesson = idx;
+  document.querySelectorAll('.lesson-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+
+  const L = LESSONS[idx];
+  document.getElementById('lesson-badge').textContent = L.badge;
+  document.getElementById('lesson-title').textContent = L.title;
+  document.getElementById('instruction-text').innerHTML = L.instruction;
+  document.getElementById('tip-text').textContent = L.tip;
+
+  const btnRow = document.getElementById('action-buttons');
+  btnRow.innerHTML = '';
+  L.actions.forEach(a => {
+    const b = document.createElement('button');
+    b.className = `btn ${a.cls}`;
+    b.textContent = a.label;
+    b.setAttribute('onclick', a.fn);
+    btnRow.appendChild(b);
+  });
+
+  clearHighlights();
+  L.setup();
+}
+
+function nextLesson() {
+  completedLessons.add(currentLesson);
+  document.querySelectorAll('.lesson-item')[currentLesson].classList.add('done');
+  updateProgress();
+  if (currentLesson < LESSONS.length - 1) setLesson(currentLesson + 1);
+}
+
+function updateProgress() {
+  const pct = Math.round((completedLessons.size / 6) * 100);
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('overall-progress').style.width = pct + '%';
+  document.getElementById('lessons-done').textContent = completedLessons.size;
+}
+
+// ─── PART SELECTION ──────────────────────────────────────────────────────────
+
+function selectPart(key) {
+  const info = PARTS[key] || PARTS[key.replace('-','_')];
+  if (!info) return;
+
+  const box = document.getElementById('part-detail-text');
+  box.innerHTML = `<strong>${info.name}</strong>${info.desc}<br><br><em style="color:var(--sage);font-size:0.8rem">💡 ${info.tip}</em>`;
+  clearHighlights();
+  const el = document.getElementById('part-' + key) || document.getElementById('part-' + key.replace('_','-'));
+  if (el) el.classList.add('highlighted');
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
+}
+
+function highlightPart(id) {
+  clearHighlights();
+  const el = document.getElementById(id);
+  if (el) el.classList.add('highlighted');
+}
+
+// ─── LABELS ──────────────────────────────────────────────────────────────────
+
+let labelsVisible = false;
+function showLabels() {
+  labelsVisible = !labelsVisible;
+  showLabelsGroup(labelsVisible);
+  const btn = document.querySelector('[onclick="showLabels()"]');
+  if (btn) btn.textContent = labelsVisible ? 'Hide Labels' : 'Show All Labels';
+}
+
+function showLabelsGroup(v) {
+  document.getElementById('labels-group').style.opacity = v ? '1' : '0';
+  document.getElementById('labels-group').style.transition = 'opacity 0.4s';
+}
+
+// ─── THREADING ───────────────────────────────────────────────────────────────
+
+function animateThread() {
+  const p = document.getElementById('thread-path');
+  p.style.transition = 'none';
+  p.style.strokeDashoffset = '600';
+  requestAnimationFrame(() => {
+    p.style.transition = 'stroke-dashoffset 2.5s ease';
+    p.style.strokeDashoffset = '0';
+  });
+  document.getElementById('needle-thread').style.opacity = '1';
+  setTimeout(() => {
+    isThreaded = true;
+    document.getElementById('stat-thread').textContent = 'Threaded ✓';
+    document.getElementById('stat-thread').className = 'stat-value good';
+    highlightPart('part-tension');
+  }, 2600);
+}
+
+function resetThread() {
+  const p = document.getElementById('thread-path');
+  p.style.transition = 'none';
+  p.style.strokeDashoffset = '600';
+  document.getElementById('needle-thread').style.opacity = '0';
+  isThreaded = false;
+  document.getElementById('stat-thread').textContent = 'Not threaded';
+  document.getElementById('stat-thread').className = 'stat-value warn';
+}
+
+// ─── BOBBIN ──────────────────────────────────────────────────────────────────
+
+function windBobbin() {
+  highlightPart('part-winder');
+  const winder = document.getElementById('part-winder');
+  if (winder) {
+    winder.style.transformOrigin = '664px 106px';
+    winder.style.animation = 'spin-wheel 0.3s linear 8 forwards';
+  }
+  setTimeout(() => {
+    if (winder) winder.style.animation = '';
+    isBobbinFull = true;
+    document.getElementById('stat-bobbin').textContent = 'Full ✓';
+    document.getElementById('stat-bobbin').className = 'stat-value good';
+    completedLessons.add(2);
+    updateProgress();
+  }, 2500);
+}
+
+// ─── STITCH SETTINGS ─────────────────────────────────────────────────────────
+
+function setStraight() {
+  document.getElementById('stat-stitch').textContent = 'Straight / 2.5mm';
+  document.getElementById('stitch-needle').setAttribute('transform', 'rotate(-20, 175, 240)');
+  completedLessons.add(3);
+  updateProgress();
+}
+
+function setZigzag() {
+  document.getElementById('stat-stitch').textContent = 'Zigzag / 3mm / W:2';
+  document.getElementById('stitch-needle').setAttribute('transform', 'rotate(30, 175, 240)');
+}
+
+// ─── POWER / SEWING ──────────────────────────────────────────────────────────
+
+function powerOn() {
+  isPowered = true;
+  document.getElementById('stat-power').textContent = 'ON';
+  document.getElementById('stat-power').style.color = 'var(--sage)';
+  showSpeed(true);
+  highlightPart('part-presser-bar');
+}
+
+function showSpeed(v) {
+  document.getElementById('speed-control').style.display = v ? 'flex' : 'none';
+}
+
+function updateSpeed(val) {
+  currentSpeed = parseInt(val);
+  document.getElementById('rpm-value').textContent = val;
+  document.getElementById('stat-speed').textContent = val + ' SPM';
+
+  if (currentSpeed > 0 && isPowered) {
+    startSewing();
+  } else {
+    stopSewing();
+  }
+  const dur = Math.max(0.2, 1 - (currentSpeed / 900));
+  document.getElementById('needle-group').style.animationDuration = dur + 's';
+  document.getElementById('handwheel-group').style.animationDuration = (dur * 1.5) + 's';
+}
+
+function startSewing() {
+  isSewing = true;
+  document.getElementById('needle-group').classList.add('sewing');
+  document.getElementById('handwheel-group').classList.add('spinning');
+  document.getElementById('fabric-group').classList.add('feeding');
+}
+
+function stopSewing() {
+  isSewing = false;
+  document.getElementById('needle-group').classList.remove('sewing');
+  document.getElementById('handwheel-group').classList.remove('spinning');
+  document.getElementById('fabric-group').classList.remove('feeding');
+}
+
+function toggleSewing() {
+  if (isSewing) { stopSewing(); document.querySelector('[onclick="toggleSewing()"]').textContent = '▶ Start'; }
+  else { if (isPowered) { startSewing(); document.querySelector('[onclick="toggleSewing()"]').textContent = '⏹ Stop'; } }
+}
+
+function reverseSew() {
+  document.getElementById('needle-group').style.animationDirection =
+    document.getElementById('needle-group').style.animationDirection === 'reverse' ? 'normal' : 'reverse';
+}
+
+function hideAnimations() { stopSewing(); }
+
+// ─── QUIZ ────────────────────────────────────────────────────────────────────
+
+function showQuiz(v) {
+  document.getElementById('quiz-container').style.display = v ? 'block' : 'none';
+}
+
+function startQuiz() {
+  quizIndex = 0;
+  showQuiz(true);
+  renderQuiz();
+}
+
+function renderQuiz() {
+  const Q = QUIZZES[quizIndex];
+  document.getElementById('quiz-question').textContent = Q.q;
+  const opts = document.getElementById('quiz-options');
+  opts.innerHTML = '';
+  quizAnswered = false;
+  const fb = document.getElementById('quiz-feedback');
+  fb.className = 'quiz-feedback';
+
+  Q.opts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.textContent = o;
+    btn.onclick = () => answerQuiz(i, btn);
+    opts.appendChild(btn);
+  });
+}
+
+function answerQuiz(i, btn) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const Q = QUIZZES[quizIndex];
+  const fb = document.getElementById('quiz-feedback');
+  const allBtns = document.querySelectorAll('.quiz-opt');
+
+  if (i === Q.answer) {
+    btn.classList.add('correct');
+    fb.textContent = '✓ Correct! ' + Q.feedback;
+    fb.className = 'quiz-feedback show ok';
+  } else {
+    btn.classList.add('wrong');
+    allBtns[Q.answer].classList.add('correct');
+    fb.textContent = '✗ Not quite. ' + Q.feedback;
+    fb.className = 'quiz-feedback show no';
+  }
+
+  document.getElementById('next-quiz-btn').style.display = 'inline-block';
+}
+
+function nextQuiz() {
+  quizIndex++;
+  if (quizIndex >= QUIZZES.length) {
+    document.getElementById('quiz-question').textContent = '🎉 All done! You\'ve completed the Singer 3337 tutorial.';
+    document.getElementById('quiz-options').innerHTML = '';
+    document.getElementById('quiz-feedback').className = 'quiz-feedback';
+    document.getElementById('next-quiz-btn').style.display = 'none';
+    completedLessons.add(5);
+    updateProgress();
+  } else {
+    renderQuiz();
+    document.getElementById('next-quiz-btn').style.display = 'none';
+  }
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+setLesson(0);
+</script>
+
+</body>
+</html>
