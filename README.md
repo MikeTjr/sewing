@@ -1,4 +1,3 @@
-cat > /home/claude/singer3337/README.md << 'READMEEOF'
 # Singer 3337 Sewing Masterclass
 ### Interactive 3D Teaching Application — Phase 1
 
@@ -106,4 +105,3 @@ Live at: https://[username].github.io/[reponame]/
 3. Claude reads README first, then only relevant changed files
 4. Claude returns a complete updated ZIP
 5. Unzip over your repo folder, push to GitHub — done
-READMEEOF
